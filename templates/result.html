@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ crop }} | Smart Farmer Dashboard</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #0b1120;
+            --card: #111827;
+            --border: #1e293b;
+            --green: #10b981;
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+            --blue: #3b82f6;
+            --orange: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        #map {
+            height: 340px;
+            border-radius: 20px;
+            border: 2px solid var(--border);
+        }
+
+        .dashboard-card {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            height: 100%;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-val {
+            font-weight: 700;
+            font-size: 0.93rem;
+            color: var(--green);
+        }
+
+        .stat-label {
+            font-size: 0.80rem;
+            color: var(--muted);
+        }
+
+        /* ── API SOURCE BADGES ── */
+        .api-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-bottom: 18px;
+        }
+
+        .api-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #0d1f35;
+            border: 1px solid #3b82f6;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.70rem;
+            color: #93c5fd;
+            font-weight: 600;
+        }
+
+        .api-badge.green {
+            background: #0d2a1f;
+            border-color: var(--green);
+            color: #6ee7b7;
+        }
+
+        .api-badge.orange {
+            background: #2a1a05;
+            border-color: var(--orange);
+            color: #fcd34d;
+        }
+
+        .api-badge i {
+            font-size: 0.68rem;
+        }
+
+        /* ── TOP-5 TABS ── */
+        .section-header {
+            font-size: 0.72rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .crop-tabs-wrapper {
+            background: var(--card);
+            border-radius: 24px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+
+        .crop-tabs {
+            display: flex;
+            gap: 9px;
+            flex-wrap: wrap;
+        }
+
+        .crop-tab {
+            flex: 1;
+            min-width: 110px;
+            background: #0f172a;
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 13px 9px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            position: relative;
+            user-select: none;
+        }
+
+        .crop-tab:hover {
+            border-color: var(--green);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 22px rgba(16, 185, 129, 0.18);
+        }
+
+        .crop-tab.active {
+            border-color: var(--green);
+            background: #0d2a1f;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22);
+        }
+
+        .crop-tab .rank-badge {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--green);
+            color: #000;
+            font-size: 0.60rem;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        .crop-tab.active .rank-badge {
+            background: #fff;
+        }
+
+        .crop-tab.ext-tab {
+            border-color: #2d3748;
+        }
+
+        .crop-tab.ext-tab:hover {
+            border-color: var(--orange);
+            box-shadow: 0 8px 22px rgba(245, 158, 11, 0.18);
+        }
+
+        .crop-tab.ext-tab.active {
+            border-color: var(--orange);
+            background: #2a1a05;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.22);
+        }
+
+        .crop-tab.ext-tab .rank-badge {
+            background: var(--orange);
+        }
+
+        .crop-tab .crop-emoji {
+            font-size: 1.8rem;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .crop-tab .crop-name {
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: var(--text);
+            text-transform: capitalize;
+            display: block;
+        }
+
+        .crop-tab .conf-bar-wrap {
+            background: #1e293b;
+            border-radius: 6px;
+            height: 5px;
+            margin-top: 7px;
+            overflow: hidden;
+        }
+
+        .crop-tab .conf-bar {
+            height: 100%;
+            background: var(--green);
+            border-radius: 6px;
+            transition: width 0.6s ease;
+        }
+
+        .crop-tab.ext-tab .conf-bar {
+            background: var(--orange);
+        }
+
+        .crop-tab .conf-pct {
+            font-size: 0.66rem;
+            color: var(--muted);
+            margin-top: 4px;
+            display: block;
+        }
+
+        /* ── SECTION BUTTONS ── */
+        .section-btn {
+            cursor: pointer;
+            background: var(--card);
+            border-radius: 16px;
+            padding: 16px 10px;
+            text-align: center;
+            transition: all 0.25s ease;
+            border: 2px solid var(--border);
+            user-select: none;
+        }
+
+        .section-btn:hover {
+            border-color: var(--green);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 22px rgba(16, 185, 129, 0.18);
+        }
+
+        .section-btn.active {
+            border-color: var(--green);
+            background: #0d2a1f;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22);
+        }
+
+        .section-btn i {
+            font-size: 1.5rem;
+            margin-bottom: 7px;
+            display: block;
+        }
+
+        .section-btn span {
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        /* ── ADVICE PANEL ── */
+        .advice-panel {
+            background: #fff;
+            color: #1f2937;
+            border-radius: 24px;
+            padding: 30px;
+            margin-top: 18px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+            display: none;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ── LOADER ── */
+        .ai-loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 50px 20px;
+            gap: 16px;
+        }
+
+        .loader-ring {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #e5e7eb;
+            border-top-color: #10b981;
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loader-dots span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            margin: 0 4px;
+            animation: bounce 1s infinite;
+        }
+
+        .loader-dots span:nth-child(2) {
+            animation-delay: .15s;
+        }
+
+        .loader-dots span:nth-child(3) {
+            animation-delay: .30s;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            80%,
+            100% {
+                transform: translateY(0);
+                opacity: .5;
+            }
+
+            40% {
+                transform: translateY(-11px);
+                opacity: 1;
+            }
+        }
+
+        .loader-text {
+            color: #6b7280;
+            font-size: .85rem;
+            text-align: center;
+            max-width: 260px;
+            line-height: 1.5;
+        }
+
+        /* ── AI CONTENT ── */
+        #ai-content h4 {
+            color: #065f46;
+            margin-top: 22px;
+            margin-bottom: 11px;
+            font-weight: 700;
+            border-left: 4px solid #10b981;
+            padding-left: 12px;
+        }
+
+        #ai-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0 18px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .07);
+        }
+
+        #ai-content th {
+            background: #ecfdf5;
+            color: #065f46;
+            padding: 12px 14px;
+            text-align: left;
+            border-bottom: 2px solid #10b981;
+            font-size: .83rem;
+            font-weight: 700;
+        }
+
+        #ai-content td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: .86rem;
+            line-height: 1.5;
+        }
+
+        #ai-content tr:last-child td {
+            border-bottom: none;
+        }
+
+        #ai-content tr:nth-child(even) td {
+            background: #f9fafb;
+        }
+
+        #ai-content ul {
+            padding-left: 18px;
+            margin: 9px 0 16px;
+        }
+
+        #ai-content li {
+            margin-bottom: 8px;
+            line-height: 1.65;
+            font-size: .88rem;
+        }
+
+        #ai-content p {
+            line-height: 1.75;
+            font-size: .88rem;
+            color: #374151;
+        }
+
+        #ai-content strong {
+            color: #065f46;
+        }
+
+        /* ── CLIMATE ZONE TAG ── */
+        .zone-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #1a1a2e;
+            border: 1px solid #4f46e5;
+            border-radius: 20px;
+            padding: 3px 12px;
+            font-size: 0.68rem;
+            color: #a5b4fc;
+        }
+
+        /* ── MISC ── */
+        .text-green {
+            color: var(--green);
+        }
+
+        .badge-green {
+            background: #064e3b;
+            color: var(--green);
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: .76rem;
+            font-weight: 600;
+            letter-spacing: .5px;
+        }
+
+        .ai-error {
+            text-align: center;
+            padding: 35px;
+            color: #ef4444;
+        }
+
+        .ai-error i {
+            font-size: 2.2rem;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .active-crop-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: #0d2a1f;
+            border-radius: 16px;
+            padding: 13px 18px;
+            margin-bottom: 16px;
+            border: 1px solid #10b981;
+        }
+
+        .active-crop-header.ext-header {
+            background: #2a1a05;
+            border-color: var(--orange);
+        }
+
+        .active-crop-header .big-emoji {
+            font-size: 2.1rem;
+        }
+
+        .active-crop-header .crop-title {
+            font-size: .95rem;
+            font-weight: 700;
+            color: #10b981;
+            text-transform: capitalize;
+            margin: 0;
+        }
+
+        .active-crop-header.ext-header .crop-title {
+            color: var(--orange);
+        }
+
+        .active-crop-header .crop-sub {
+            font-size: .73rem;
+            color: var(--muted);
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container py-4">
+
+        <!-- HEADER -->
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div>
+                <span class="badge-green mb-1 d-inline-block">✅ AI Prediction — {{ (top5|length) + (extended|length) }}
+                    Crops Analysed</span>
+                <h2 class="text-green fw-bold mb-0">{{ top5[0].emoji }} {{ top5[0].name | title }}
+                    <span style="font-size:.6em;color:var(--muted);font-weight:400"> — Best Match</span>
+                </h2>
+                <small class="text-muted">Ranked by AI for <strong>{{ city }}</strong> using live weather + NASA soil +
+                    ICAR data</small>
+            </div>
+            <a href="/" class="btn btn-outline-light btn-sm rounded-pill px-4">← New Prediction</a>
+        </div>
+
+        <!-- API SOURCE BADGES -->
+        <div class="api-badges mb-3">
+            <span class="api-badge green"><i class="fas fa-satellite"></i> NASA POWER API — Rainfall & Soil
+                Moisture</span>
+            <span class="api-badge"><i class="fas fa-cloud-sun"></i> OpenWeatherMap — Live Temp & Humidity</span>
+            <span class="api-badge orange"><i class="fas fa-brain"></i> XGBoost ML Model — Crop Ranking</span>
+            <span class="api-badge orange"><i class="fas fa-map-marked-alt"></i> ICAR Soil DB — {{ city }} Data</span>
+            {% if climate_zone %}
+            <span class="api-badge" style="border-color:#4f46e5;color:#a5b4fc;background:#1a1a2e">
+                <i class="fas fa-globe-asia"></i> Climate Zone: {{ climate_zone }}
+            </span>
+            {% endif %}
+        </div>
+
+        <!-- MAP + WEATHER STATS -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-8">
+                <div id="map"></div>
+            </div>
+            <div class="col-lg-4">
+                <div class="dashboard-card">
+                    <h5 class="fw-bold mb-2"><i class="fas fa-location-dot text-green me-2"></i>{{ city }}</h5>
+                    {% if weather_desc %}
+                    <small class="text-muted d-block mb-2" style="font-size:.75rem">
+                        🌤️ {{ weather_desc }}{% if wind_speed %} &nbsp;·&nbsp; 💨 {{ wind_speed }} m/s{% endif %}
+                    </small>
+                    {% endif %}
+                    <hr class="border-secondary my-2">
+
+                    <p class="mb-1"
+                        style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">
+                        🌤 Live Weather <span style="color:#3b82f6;font-size:.65rem">(OpenWeatherMap)</span>
+                    </p>
+                    <div class="stat-row"><span class="stat-label">🌡️ Temperature</span><span class="stat-val">{{ temp
+                            }}°C</span></div>
+                    <div class="stat-row"><span class="stat-label">💧 Humidity</span> <span class="stat-val">{{ hum
+                            }}%</span></div>
+
+                    <p class="mt-3 mb-1"
+                        style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">
+                        🛰 NASA POWER Data
+                    </p>
+                    <div class="stat-row"><span class="stat-label">🌧️ Rainfall</span> <span class="stat-val">{{ rain }}
+                            mm</span></div>
+                    <div class="stat-row"><span class="stat-label">🌱 Soil Moisture</span><span class="stat-val">{{
+                            moist }}%</span></div>
+
+                    <p class="mt-3 mb-1"
+                        style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">
+                        🪱 ICAR Soil pH — {{ city }}
+                    </p>
+                    <div class="stat-row"><span class="stat-label">⚗️ Soil pH</span><span class="stat-val">{{ ph
+                            }}</span></div>
+
+                    <div class="mt-2" style="font-size:.67rem;color:var(--muted);">
+                        📍 Lat {{ "%.3f"|format(lat) }}, Lon {{ "%.3f"|format(lon) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOP-5 ML CROPS -->
+        <div class="crop-tabs-wrapper">
+            <p class="section-header">🏆 Top 5 Crops — XGBoost ML Model (Click to Explore)</p>
+            <div class="crop-tabs" id="ml-tabs">
+                {% for c in top5 %}
+                <div class="crop-tab {% if loop.first %}active{% endif %}" id="tab-ml-{{ loop.index }}"
+                    data-name="{{ c.name }}" data-emoji="{{ c.emoji }}" data-conf="{{ c.confidence }}" data-type="ml"
+                    data-idx="{{ loop.index }}" onclick="selectCropFromTab(this)">
+                    <span class="rank-badge">#{{ c.rank }}</span>
+                    <span class="crop-emoji">{{ c.emoji }}</span>
+                    <span class="crop-name">{{ c.name }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- EXTENDED REGIONAL CROPS -->
+        {% if extended %}
+        <div class="crop-tabs-wrapper" style="border-color: #3a2510;">
+            <p class="section-header" style="color:#fcd34d;">
+                🌍 Additional Crops — Regional Climate + Soil Analysis (50+ Crops Evaluated)
+            </p>
+            <div class="crop-tabs" id="ext-tabs">
+                {% for c in extended %}
+                <div class="crop-tab ext-tab" id="tab-ext-{{ loop.index }}" data-name="{{ c.name }}"
+                    data-emoji="{{ c.emoji }}" data-conf="{{ c.confidence }}" data-type="ext"
+                    data-idx="{{ loop.index }}" onclick="selectCropFromTab(this)">
+                    <span class="rank-badge">#{{ c.rank }}</span>
+                    <span class="crop-emoji">{{ c.emoji }}</span>
+                    <span class="crop-name">{{ c.name | replace('_',' ') }}</span>
+                    <div class="conf-bar-wrap">
+                        <div class="conf-bar" style="width:100%"></div>
+                    </div>
+                    <span class="conf-pct">{{ c.confidence }}% fit</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ACTIVE CROP HEADER -->
+        <div class="active-crop-header" id="active-header">
+            <span class="big-emoji" id="active-emoji">{{ top5[0].emoji }}</span>
+            <div>
+                <p class="crop-title" id="active-name">{{ top5[0].name }}</p>
+            </div>
+        </div>
+
+        <!-- SECTION BUTTONS -->
+        <div class="row g-3 mb-2">
+            <div class="col-6 col-md-3">
+                <div class="section-btn" id="btn-FERT" onclick="fetchSection('FERT')">
+                    <i class="fas fa-flask text-warning"></i><span>Fertilizer</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="section-btn" id="btn-WATER" onclick="fetchSection('WATER')">
+                    <i class="fas fa-droplet text-info"></i><span>Water & Irrigation</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="section-btn" id="btn-CALENDAR" onclick="fetchSection('CALENDAR')">
+                    <i class="fas fa-calendar-alt text-danger"></i><span>Crop Calendar</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="section-btn" id="btn-MANDI" onclick="fetchSection('MANDI')">
+                    <i class="fas fa-shop text-success"></i><span>Mandi Prices</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADVICE PANEL -->
+        <div id="advice-panel" class="advice-panel">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <h4 id="advice-title" class="fw-bold m-0" style="color:#065f46;"></h4>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="speakContent()">
+                        <i class="fas fa-volume-up me-1"></i> Listen
+                    </button>
+                    <button class="btn btn-sm btn-dark rounded-pill px-3" onclick="window.print()">
+                        <i class="fas fa-print me-1"></i> Print
+                    </button>
+                </div>
+            </div>
+            <div id="ai-content"></div>
+        </div>
+
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ── Map ──
+        var _lat = 17.385;
+        var _lon = 78.486;
+        var map = L.map('map').setView([_lat, _lon], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: ''
+        }).addTo(map);
+        L.marker([_lat, _lon]).addTo(map)
+            .bindPopup("<b>{{ city }}</b><br>Best Crop: <strong>{{ top5[0].name | title }}</strong>")
+            .openPopup();
+
+        const CITY = "{{ city }}";
+        const LANG = "{{ lang }}";
+        const TEMP = "{{ temp }}";
+        const HUM = "{{ hum }}";
+        const RAIN = "{{ rain }}";
+        const MOIST = "{{ moist }}";
+
+        const TITLES = {
+            FERT: "🌿 Fertilizer Recommendation",
+            WATER: "💧 Water & Irrigation Guide",
+            CALENDAR: "📅 Crop Calendar",
+            MANDI: "🏪 Mandi Market Prices"
+        };
+
+        const cache = {};
+        let activeCrop = "{{ top5[0].name }}";
+        let activeEmoji = "{{ top5[0].emoji }}";
+        let activeConf = "{{ top5[0].confidence }}";
+        let activeIsExt = false;
+
+        // Reads crop info safely from data-* attributes (avoids emoji/quote injection)
+        function selectCropFromTab(el) {
+            selectCrop(el.dataset.type, el.dataset.idx, el.dataset.name, el.dataset.emoji, el.dataset.conf);
+        }
+
+        function selectCrop(type, tabIdx, cropName, emoji, conf) {
+            activeCrop = cropName;
+            activeEmoji = emoji;
+            activeConf = conf;
+            activeIsExt = (type === 'ext');
+
+            // Deactivate all tabs
+            document.querySelectorAll('.crop-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + type + '-' + tabIdx).classList.add('active');
+
+            // Update active header style
+            const hdr = document.getElementById('active-header');
+            if (activeIsExt) {
+                hdr.classList.add('ext-header');
+            } else {
+                hdr.classList.remove('ext-header');
+            }
+
+            document.getElementById('active-emoji').textContent = emoji;
+            document.getElementById('active-name').textContent = cropName.replace(/_/g, ' ');
+            document.getElementById('advice-panel').style.display = 'none';
+        }
+
+        async function fetchSection(section) {
+            document.querySelectorAll('.section-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + section).classList.add('active');
+
+            const panel = document.getElementById('advice-panel');
+            const content = document.getElementById('ai-content');
+            const title = document.getElementById('advice-title');
+
+            panel.style.display = 'block';
+            const cropDisplay = activeCrop.replace(/_/g, ' ');
+            title.textContent = `${TITLES[section]}  —  ${cropDisplay.charAt(0).toUpperCase() + cropDisplay.slice(1)}`;
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            if (cache[activeCrop]?.[section]) {
+                content.innerHTML = cache[activeCrop][section];
+                return;
+            }
+
+            content.innerHTML = `
+            <div class="ai-loader">
+                <div class="loader-ring"></div>
+                <div class="loader-dots"><span></span><span></span><span></span></div>
+                <p class="loader-text">
+                    AI is generating advice for <strong>${cropDisplay}</strong> in <strong>${CITY}</strong>…<br>
+                    Usually takes 5–10 seconds ☕
+                </p>
+            </div>`;
+
+            try {
+                const resp = await fetch("/get_advice", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        section, crop: activeCrop, city: CITY, lang: LANG,
+                        temp: TEMP, hum: HUM, rain: RAIN, moist: MOIST
+                    })
+                });
+                const data = await resp.json();
+                if (!resp.ok || data.error) throw new Error(data.error || "Server error");
+
+                const html = data.html
+                    .replace(/```html/g, "").replace(/```/g, "")
+                    .replace(/\*\*/g, "").replace(/#{1,3} /g, "").trim();
+
+                if (!cache[activeCrop]) cache[activeCrop] = {};
+                cache[activeCrop][section] = html;
+                content.innerHTML = html;
+
+            } catch (err) {
+                content.innerHTML = `
+                <div class="ai-error">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <p><strong>Could not fetch data</strong></p>
+                    <p class="text-muted" style="font-size:.85rem">${err.message}</p>
+                    <button class="btn btn-sm btn-outline-danger mt-2 rounded-pill"
+                            onclick="fetchSection('${section}')">
+                        <i class="fas fa-rotate-right me-1"></i> Retry
+                    </button>
+                </div>`;
+            }
+        }
+
+        function speakContent() {
+            const text = document.getElementById('ai-content').innerText;
+            if (!text.trim()) return;
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            if (LANG === 'Telugu') msg.lang = 'te-IN';
+            else if (LANG === 'Hindi') msg.lang = 'hi-IN';
+            else msg.lang = 'en-IN';
+            window.speechSynthesis.speak(msg);
+        }
+    </script>
+</body>
+
+</html>

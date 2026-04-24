@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaf Disease Analysis | Smart Farmer AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        body { background-color: #fff8f8; font-family: 'Poppins', sans-serif; }
+        .result-card {
+            background: white;
+            border-radius: 25px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.07);
+            margin-top: 40px;
+            border-left: 6px solid #c62828;
+        }
+        .back-link { text-decoration: none; color: #c62828; font-weight: 600; }
+        .govt-tag {
+            background: #ffebee; color: #c62828;
+            padding: 6px 15px; border-radius: 20px;
+            font-size: 0.85rem; font-weight: 600;
+            display: inline-block; margin-bottom: 20px;
+        }
+        h4 { color: #7b1fa2; margin-top: 24px; margin-bottom: 12px;
+             font-weight: 700; border-left: 4px solid #c62828; padding-left: 12px; }
+        table { width: 100%; border-collapse: collapse; margin: 14px 0 20px;
+                border-radius: 12px; overflow: hidden;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+        th { background: #ffebee; color: #b71c1c; padding: 13px 15px;
+             text-align: left; border-bottom: 2px solid #c62828;
+             font-size: 0.85rem; font-weight: 700; }
+        td { padding: 11px 15px; border-bottom: 1px solid #e5e7eb;
+             font-size: 0.88rem; line-height: 1.5; }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: #fff8f8; }
+        ul { padding-left: 20px; margin: 10px 0 18px; }
+        li { margin-bottom: 9px; line-height: 1.65; font-size: 0.9rem; }
+        p  { line-height: 1.75; font-size: 0.9rem; color: #374151; }
+    </style>
+</head>
+<body>
+<div class="container pb-5">
+    <div class="mt-4">
+        <a href="javascript:history.back()" class="back-link">
+            <i class="fas fa-arrow-left me-2"></i>
+            {% if lang == 'Telugu' %}వెనుకకు{% elif lang == 'Hindi' %}वापस{% else %}Back{% endif %}
+        </a>
+    </div>
+
+    <div class="text-center mt-4">
+        <span class="govt-tag">
+            <i class="fas fa-microscope me-2"></i>
+            {% if lang == 'Telugu' %}AI ఆకు వ్యాధి విశ్లేషణ{% elif lang == 'Hindi' %}AI पत्ती रोग विश्लेषण{% else %}AI Leaf Disease Analysis{% endif %}
+        </span>
+        <h2 class="fw-bold text-danger">
+            {% if lang == 'Telugu' %}🍃 ఆకు స్కాన్ ఫలితాలు{% elif lang == 'Hindi' %}🍃 पत्ती स्कैन परिणाम{% else %}🍃 Leaf Scan Results{% endif %}
+        </h2>
+    </div>
+
+    <div class="result-card mx-auto" style="max-width: 860px;">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h4 class="fw-bold m-0" style="border:none; color:#c62828;">
+                <i class="fas fa-stethoscope me-2"></i>
+                {% if lang == 'Telugu' %}విశ్లేషణ నివేదిక{% elif lang == 'Hindi' %}विश्लेषण रिपोर्ट{% else %}Analysis Report{% endif %}
+            </h4>
+            <div class="d-flex gap-2">
+                <button onclick="speakResult()" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                    <i class="fas fa-volume-up me-1"></i> {{ t.audio_btn }}
+                </button>
+                <button onclick="window.print()" class="btn btn-dark btn-sm rounded-pill px-3">
+                    <i class="fas fa-print me-1"></i>
+                    {% if lang == 'Telugu' %}ముద్రించు{% elif lang == 'Hindi' %}प्रिंट{% else %}Print{% endif %}
+                </button>
+            </div>
+        </div>
+
+        <div id="disease-result">
+            {{ result | safe }}
+        </div>
+    </div>
+</div>
+
+<script>
+    function speakResult() {
+        const text = document.getElementById('disease-result').innerText;
+        if (!text.trim()) return;
+        window.speechSynthesis.cancel();
+        const msg = new SpeechSynthesisUtterance(text);
+        const l = "{{ lang }}";
+        if (l === 'Telugu') msg.lang = 'te-IN';
+        else if (l === 'Hindi') msg.lang = 'hi-IN';
+        else msg.lang = 'en-IN';
+        window.speechSynthesis.speak(msg);
+    }
+</script>
+</body>
+</html>
